@@ -1,0 +1,21 @@
+# ============================================================================
+# terraform.tfvars 示例（请复制为 terraform.tfvars 后填入，勿提交真实凭据）
+# 凭据建议通过环境变量注入：
+#   export TF_VAR_rds_password="<你的密码>"
+#   export TF_VAR_dcs_password="<你的密码>"
+#   export TF_VAR_node_password="<你的密码>"
+#   export HW_ACCESS_KEY="<AK>"
+#   export HW_SECRET_KEY="<SK>"
+# ============================================================================
+
+region            = "cn-north-4"
+project_name      = "dify-on-huaweicloud"
+obs_bucket_name   = "dify-hwc-practice-assets"
+swr_organization  = "dify-practice"
+node_flavor       = "c7.large.2"
+node_count        = 2
+
+# 以下为敏感变量，建议用环境变量注入，此处仅作占位示例
+# rds_password  = "<请通过环境变量 TF_VAR_rds_password 注入>"
+# dcs_password  = "<请通过环境变量 TF_VAR_dcs_password 注入>"
+# node_password = "<请通过环境变量 TF_VAR_node_password 注入>"

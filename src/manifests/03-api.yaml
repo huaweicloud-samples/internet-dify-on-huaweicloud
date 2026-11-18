@@ -1,0 +1,115 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dify-api
+  namespace: dify
+  labels:
+    app: dify-api
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dify-api
+  template:
+    metadata:
+      labels:
+        app: dify-api
+    spec:
+      containers:
+        - name: api
+          image: langgenius/dify-api:1.13.3
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5001
+          env:
+            - name: MODE
+              value: "api"
+            # 敏感凭据从 Secret 注入（仅占位符，部署前由 kubectl 替换）
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: dify-secrets
+                  key: DB_USERNAME
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dify-secrets
+                  key: DB_PASSWORD
+            - name: PGVECTOR_USER
+              valueFrom:
+                secretKeyRef:
+                  name: dify-secrets
+                  key: PGVECTOR_USER
+            - name: PGVECTOR_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dify-secrets
+                  key: PGVECTOR_PASSWORD
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dify-secrets
+                  key: REDIS_PASSWORD
+            - name: S3_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: dify-secrets
+                  key: S3_ACCESS_KEY
+            - name: S3_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: dify-secrets
+                  key: S3_SECRET_KEY
+            - name: SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: dify-secrets
+                  key: SECRET_KEY
+            - name: DIFY_INNER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: dify-secrets
+                  key: DIFY_INNER_API_KEY
+            - name: PLUGIN_DAEMON_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: dify-secrets
+                  key: PLUGIN_DAEMON_KEY
+          # 非敏感配置统一来自 ConfigMap
+          envFrom:
+            - configMapRef:
+                name: dify-env
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 5001
+            initialDelaySeconds: 60
+            periodSeconds: 10
+          livenessProbe:
+            httpGet:
+              path: /health
+              port: 5001
+            initialDelaySeconds: 90
+            periodSeconds: 15
+          resources:
+            requests:
+              cpu: "500m"
+              memory: "1Gi"
+            limits:
+              cpu: "2"
+              memory: "4Gi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dify-api
+  namespace: dify
+spec:
+  selector:
+    app: dify-api
+  ports:
+    - name: api
+      port: 5001
+      targetPort: 5001
+      nodePort: 31001
+  type: NodePort
