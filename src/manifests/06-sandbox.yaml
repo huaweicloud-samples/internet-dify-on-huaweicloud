@@ -1,0 +1,60 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dify-sandbox
+  namespace: dify
+  labels:
+    app: dify-sandbox
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dify-sandbox
+  template:
+    metadata:
+      labels:
+        app: dify-sandbox
+    spec:
+      containers:
+        - name: sandbox
+          image: langgenius/dify-sandbox:latest
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 8194
+          env:
+            - name: API_PORT
+              value: "8194"
+            - name: DIFY_INNER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: dify-secrets
+                  key: DIFY_INNER_API_KEY
+            - name: LOG_LEVEL
+              value: "INFO"
+          readinessProbe:
+            httpGet:
+              path: /health
+              port: 8194
+            initialDelaySeconds: 10
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1"
+              memory: "1Gi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dify-sandbox
+  namespace: dify
+spec:
+  selector:
+    app: dify-sandbox
+  ports:
+    - name: sandbox
+      port: 8194
+      targetPort: 8194
+  type: ClusterIP

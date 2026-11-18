@@ -1,0 +1,115 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: dify-plugin-daemon
+  namespace: dify
+  labels:
+    app: dify-plugin-daemon
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: dify-plugin-daemon
+  template:
+    metadata:
+      labels:
+        app: dify-plugin-daemon
+    spec:
+      containers:
+        - name: plugin-daemon
+          image: langgenius/dify-plugin-daemon:0.5.5-local
+          imagePullPolicy: IfNotPresent
+          ports:
+            - containerPort: 5002
+            - containerPort: 5003
+          env:
+            # 与 api 侧的 PLUGIN_DAEMON_KEY 必须一致（内部鉴权）
+            - name: SERVER_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: dify-secrets
+                  key: PLUGIN_DAEMON_KEY
+            # 插件守护进程回调 Dify API 的内部地址与鉴权密钥（必填）
+            - name: DIFY_INNER_API_URL
+              value: "http://dify-api:5001"
+            - name: DIFY_INNER_API_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: dify-secrets
+                  key: PLUGIN_DAEMON_KEY
+            # 插件远程安装主机与端口（必填，按 Dify 官方默认监听地址）
+            - name: PLUGIN_REMOTE_INSTALLING_HOST
+              value: "0.0.0.0"
+            - name: PLUGIN_REMOTE_INSTALLING_PORT
+              value: "5003"
+            - name: DB_USERNAME
+              valueFrom:
+                secretKeyRef:
+                  name: dify-secrets
+                  key: DB_USERNAME
+            - name: DB_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dify-secrets
+                  key: DB_PASSWORD
+            - name: REDIS_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: dify-secrets
+                  key: REDIS_PASSWORD
+            - name: S3_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: dify-secrets
+                  key: S3_ACCESS_KEY
+            - name: S3_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: dify-secrets
+                  key: S3_SECRET_KEY
+            # 插件守护进程(Go) 的 S3 客户端绑定 AWS_* 变量名（与 api/worker 的 S3_* 不同）
+            - name: AWS_ACCESS_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: dify-secrets
+                  key: S3_ACCESS_KEY
+            - name: AWS_SECRET_KEY
+              valueFrom:
+                secretKeyRef:
+                  name: dify-secrets
+                  key: S3_SECRET_KEY
+            - name: AWS_REGION
+              value: "cn-north-4"
+            - name: PLUGIN_WORKING_PATH
+              value: "/app/storage"
+          envFrom:
+            - configMapRef:
+                name: dify-env
+          readinessProbe:
+            httpGet:
+              path: /health/check
+              port: 5002
+            initialDelaySeconds: 20
+            periodSeconds: 10
+          resources:
+            requests:
+              cpu: "250m"
+              memory: "512Mi"
+            limits:
+              cpu: "1"
+              memory: "1Gi"
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: dify-plugin-daemon
+  namespace: dify
+spec:
+  selector:
+    app: dify-plugin-daemon
+  ports:
+    - name: daemon
+      port: 5002
+      targetPort: 5002
+      nodePort: 31002
+  type: NodePort

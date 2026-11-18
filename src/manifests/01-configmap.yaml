@@ -1,0 +1,61 @@
+# Dify 非敏感环境配置
+# 敏感信息（数据库密码、Redis 密码、对象存储密钥、SECRET_KEY、内部通信密钥）统一放在 02-secrets.yaml
+# 注：以下带「<替换>」占位符的地址在 apply 前由 terraform output 回填（部署指南第 4 步）
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: dify-env
+  namespace: dify
+data:
+  # 运行模式（MODE 在每个 Deployment 内单独设置：api / worker）
+  LOG_LEVEL: "INFO"
+  DEBUG: "false"
+
+  # 数据库（PostgreSQL，由 RDS 提供；以下地址在 apply 前由 terraform output 回填）
+  DB_HOST: "<替换为 RDS PostgreSQL 内网地址>"
+  DB_DATABASE: "dify"
+  DB_PORT: "5432"
+  DB_CHARSET: "UTF8"
+
+  # 向量库：使用 PostgreSQL 的 pgvector 扩展（与业务库同实例，免独立向量库）
+  VECTOR_STORE: "pgvector"
+  PGVECTOR_HOST: "<替换为 RDS PostgreSQL 内网地址，与 DB_HOST 相同>"
+  PGVECTOR_PORT: "5432"
+  PGVECTOR_DATABASE: "dify"
+
+  # 缓存与消息代理（Redis，由 DCS 提供；未开启 TLS）
+  REDIS_HOST: "<替换为 DCS Redis 内网地址>"
+  REDIS_PORT: "6379"
+  REDIS_DB: "0"
+  REDIS_USE_SSL: "false"
+  CELERY_BROKER_USE_SSL: "false"
+
+  # 文件存储：对象存储服务 OBS 作为对象存储后端
+  STORAGE_TYPE: "s3"
+  S3_BUCKET_NAME: "<替换为 OBS 桶名>"
+  S3_REGION: "cn-north-4"
+  AWS_REGION: "cn-north-4"
+  S3_ENDPOINT: "https://obs.cn-north-4.myhuaweicloud.com"
+  S3_USE_PATH_STYLE: "false"
+
+  # Web 前端访问前缀与控制台地址（控制台/应用地址在 apply 前填为 ELB 公网入口）
+  NEXT_PUBLIC_API_PREFIX: "/api"
+  NEXT_PUBLIC_PUBLIC_API_PREFIX: "/api"
+  CONSOLE_API_URL: "http://120.46.199.213"
+  APP_API_URL: "http://120.46.199.213"
+  CONSOLE_WEB_URL: "http://120.46.199.213"
+  APP_WEB_URL: "http://120.46.199.213"
+  SERVICE_API_URL: "http://120.46.199.213"
+
+  # 沙箱与插件守护进程内部地址（集群内 Service DNS）
+  CODE_EXECUTION_ENDPOINT: "http://dify-sandbox:8194"
+  PLUGIN_DAEMON_URL: "http://dify-plugin-daemon:5002"
+
+  # 插件持久化存储（复用 OBS）
+  PLUGIN_STORAGE_TYPE: "s3"
+  PLUGIN_STORAGE_OSS_BUCKET: "<替换为 OBS 桶名>"
+  PLUGIN_INSTALLED_PATH: "plugins"
+
+  # 自动执行数据库迁移
+  MIGRATION_ENABLED: "true"
+  INIT_PASSWORD: "dify123456"

@@ -1,0 +1,83 @@
+# Dify 统一入口（CCE ELB 自动创建）
+# 路由规则：
+#   /console/api、/api、/v1、/files、/triggers  → dify-api:5001
+#   /e、/e/*                                   → dify-plugin-daemon:5002
+#   /*                                         → dify-web:3000
+# 说明：
+#   - 采用「共享型(弹性) ELB」(kubernetes.io/elb.class: union)，免 L7 规格名，
+#     在 cn-north-4 实测可正常自动创建公网 ELB + EIP；
+#     独享型(performance) ELB 需要指定可用的 l7_flavor_name，而本区通过 API/数据源
+#     未能解析到可用的独享型 L7 规格名（如 c6 为计算规格而非 ELB 规格），因此选用共享型。
+#   - annotations 中的 available_zone 需与部署区域一致；
+#     若需 HTTPS，请补充 tls 段并配置证书，详见部署指南。
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: dify
+  namespace: dify
+  annotations:
+    kubernetes.io/elb.class: union
+    kubernetes.io/elb.autocreate: >-
+      {
+        "type": "public",
+        "bandwidth_name": "dify-elb-bw",
+        "bandwidth_chargemode": "traffic",
+        "bandwidth_sharetype": "PER",
+        "bandwidth_size": 5,
+        "eip_type": "5_bgp",
+        "available_zone": ["cn-north-4a"]
+      }
+    kubernetes.io/elb.idle-timeout: "60"
+spec:
+  rules:
+    - http:
+        paths:
+          - path: /console/api
+            pathType: Prefix
+            backend:
+              service:
+                name: dify-api
+                port:
+                  number: 5001
+          - path: /api
+            pathType: Prefix
+            backend:
+              service:
+                name: dify-api
+                port:
+                  number: 5001
+          - path: /v1
+            pathType: Prefix
+            backend:
+              service:
+                name: dify-api
+                port:
+                  number: 5001
+          - path: /files
+            pathType: Prefix
+            backend:
+              service:
+                name: dify-api
+                port:
+                  number: 5001
+          - path: /triggers
+            pathType: Prefix
+            backend:
+              service:
+                name: dify-api
+                port:
+                  number: 5001
+          - path: /e
+            pathType: Prefix
+            backend:
+              service:
+                name: dify-plugin-daemon
+                port:
+                  number: 5002
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: dify-web
+                port:
+                  number: 3000
